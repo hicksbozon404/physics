@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Physics Study Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Dark Theme with Green Accents -->
+    <!-- Application Structure Plan: A tab-based SPA with a prominent top navigation bar. This structure allows the user to easily switch between different study topics (Units, Dimensions, Vectors) and a consolidated 'Quiz Zone'. This design prioritizes focused learning by segmenting content into manageable, interactive modules. Interactive elements (converter, vector lab, quiz) are deeply integrated within their respective topic sections, fostering active engagement. The flow supports both a structured learning path and quick reference, addressing the user's need for both teaching and practice. -->
+    <!-- Visualization & Content Choices: 
+        - Report Info: Unit conversion examples, comprehensive unit types -> Goal: Dynamic conversion practice & unit understanding -> Viz/Method: Interactive HTML form with dynamic dropdowns and conversion logic -> Interaction: User selects units, inputs value, gets instant result; includes a prefixes table. -> Justification: Provides hands-on practice for a wide range of common physics units, crucial for exam readiness. -> Library: Vanilla JS.
+        - Report Info: Vector addition, component breakdown, SOH CAH TOA -> Goal: Visualize vector operations and trigonometric principles -> Viz/Method: Chart.js Canvas Scatter Plot for vector visualization; interactive input for magnitude/angle or components; dedicated SOH CAH TOA explainer. -> Interaction: User inputs vector properties, sees graphical representation and calculated resultant; can toggle input method for versatility. -> Justification: Makes abstract vector concepts concrete and allows exploration of different problem types. -> Library: Chart.js, Vanilla JS.
+        - Report Info: Exam-standard questions for each topic -> Goal: Self-assessment and reinforced learning -> Viz/Method: Embedded quiz sections after each topic with hidden solutions. -> Interaction: User attempts questions, clicks to reveal detailed solutions. -> Justification: Promotes active recall and provides immediate, comprehensive feedback, simulating exam conditions. -> Library: Vanilla JS.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0a0a0a; color: #e0e0e0; }
+        .nav-btn { transition: all 0.3s ease; }
+        .nav-btn.active {
+            background-color: #16a34a;
+            color: white;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
+        }
+        .content-section {
+            display: none;
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+        .content-section.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .latex { font-family: "Times New Roman", serif; font-style: italic; }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 550px;
+            height: 380px;
+            max-height: 450px;
+            margin-left: auto;
+            margin-right: auto;
+            background-color: #1a1a1a;
+            border-radius: 0.75rem;
+            padding: 1rem;
+        }
+         @media (min-width: 768px) {
+            .chart-container {
+                height: 450px;
+            }
+        }
+        .quiz-question-card {
+            background-color: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        .quiz-solution {
+            background-color: #222;
+            border-left: 4px solid #16a34a;
+            padding: 1rem;
+            margin-top: 1rem;
+            border-radius: 0.5rem;
+            display: none;
+        }
+        .quiz-solution.active {
+            display: block;
+        }
+        input[type="number"], select {
+            background-color: #222;
+            color: #e0e0e0;
+            border-color: #444;
+        }
+        input[type="number"]:focus, select:focus {
+            border-color: #16a34a;
+            box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.5);
+        }
+        button {
+            background-color: #16a34a;
+            color: white;
+            transition: background-color 0.2s ease-in-out;
+        }
+        button:hover {
+            background-color: #15803d;
+        }
+    </style>
+</head>
+<body class="bg-black text-neutral-100">
+
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8">
+
+        <header class="text-center mb-8">
+            <h1 class="text-3xl sm:text-4xl font-bold text-green-400">Physics Study Hub</h1>
+            <p class="text-lg text-neutral-300 mt-2">Designed by Sir HICKS BOZON404</p>
+        </header>
+
+        <nav class="flex flex-wrap justify-center gap-2 sm:gap-4 mb-8">
+            <button data-target="units" class="nav-btn active px-4 py-2 rounded-lg font-semibold bg-neutral-800 shadow-sm hover:bg-neutral-700">Units & Conversions</button>
+            <button data-target="dimensions" class="nav-btn px-4 py-2 rounded-lg font-semibold bg-neutral-800 shadow-sm hover:bg-neutral-700">Dimensional Analysis</button>
+            <button data-target="vectors" class="nav-btn px-4 py-2 rounded-lg font-semibold bg-neutral-800 shadow-sm hover:bg-neutral-700">Vectors Lab</button>
+            <button data-target="formulas" class="nav-btn px-4 py-2 rounded-lg font-semibold bg-neutral-800 shadow-sm hover:bg-neutral-700">Formulas</button>
+        </nav>
+
+        <main>
+            <section id="units" class="content-section active">
+                 <div class="bg-neutral-900 p-6 sm:p-8 rounded-xl shadow-lg">
+                    <h2 class="text-2xl font-bold mb-4 text-green-400">1. Units: The Language of Measurement</h2>
+                    <p class="mb-6 text-neutral-300">Units are fundamental in physics; they give meaning to numbers. Without units, a measurement is just a number without context. This section will guide you through SI units, common prefixes, and an interactive converter to practice conversions.</p>
+
+                    <h3 class="text-xl font-semibold mb-3 text-neutral-200">Key Concepts: SI Base & Derived Units</h3>
+                    <div class="grid md:grid-cols-2 gap-6 mb-8">
+                        <div class="p-4 bg-neutral-800 rounded-lg shadow-md">
+                            <h4 class="font-bold text-green-300 mb-2">SI Base Units</h4>
+                            <p class="text-sm text-neutral-400 mb-2">These are the fundamental building blocks of all measurements.</p>
+                            <ul class="list-disc list-inside text-neutral-300 space-y-1">
+                                <li>Length: meter (m)</li>
+                                <li>Mass: kilogram (kg)</li>
+                                <li>Time: second (s)</li>
+                                <li>Electric Current: ampere (A)</li>
+                                <li>Temperature: Kelvin (K)</li>
+                                <li>Amount of Substance: mole (mol)</li>
+                                <li>Luminous Intensity: candela (cd)</li>
+                            </ul>
+                        </div>
+                        <div class="p-4 bg-neutral-800 rounded-lg shadow-md">
+                            <h4 class="font-bold text-green-300 mb-2">Derived Units</h4>
+                            <p class="text-sm text-neutral-400 mb-2">Units formed by combining base SI units.</p>
+                            <ul class="list-disc list-inside text-neutral-300 space-y-1">
+                                <li>Speed: meters per second (<span class="latex">m/s</span>)</li>
+                                <li>Force: Newton (N), which is <span class="latex">kg·m/s²</span></li>
+                                <li>Energy: Joule (J), which is <span class="latex">kg·m²/s²</span></li>
+                                <li>Power: Watt (W), which is <span class="latex">J/s</span> or <span class="latex">kg·m²/s³</span></li>
+                                <li>Pressure: Pascal (Pa), which is <span class="latex">N/m²</span> or <span class="latex">kg/(m·s²)</span></li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <h3 class="text-xl font-semibold mb-3 text-neutral-200">SI Prefixes: Scaling Units</h3>
+                    <p class="mb-4 text-neutral-300">Prefixes are used to denote multiples or submultiples of units, making it easier to express very large or very small quantities. Understanding these is key to unit conversion.</p>
+                    <div class="overflow-x-auto mb-8">
+                        <table class="min-w-full bg-neutral-800 rounded-lg shadow-md">
+                            <thead>
+                                <tr class="bg-neutral-700 text-green-300">
+                                    <th class="py-2 px-4 text-left">Prefix</th>
+                                    <th class="py-2 px-4 text-left">Symbol</th>
+                                    <th class="py-2 px-4 text-left">Factor</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="border-b border-neutral-700"><td class="py-2 px-4">Giga</td><td class="py-2 px-4">G</td><td class="py-2 px-4">10⁹</td></tr>
+                                <tr class="border-b border-neutral-700"><td class="py-2 px-4">Mega</td><td class="py-2 px-4">M</td><td class="py-2 px-4">10⁶</td></tr>
+                                <tr class="border-b border-neutral-700"><td class="py-2 px-4">Kilo</td><td class="py-2 px-4">k</td><td class="py-2 px-4">10³</td></tr>
+                                <tr class="border-b border-neutral-700"><td class="py-2 px-4">Centi</td><td class="py-2 px-4">c</td><td class="py-2 px-4">10⁻²</td></tr>
+                                <tr class="border-b border-neutral-700"><td class="py-2 px-4">Milli</td><td class="py-2 px-4">m</td><td class="py-2 px-4">10⁻³</td></tr>
+                                <tr class="border-b border-neutral-700"><td class="py-2 px-4">Micro</td><td class="py-2 px-4">µ</td><td class="py-2 px-4">10⁻⁶</td></tr>
+                                <tr><td class="py-2 px-4">Nano</td><td class="py-2 px-4">n</td><td class="py-2 px-4">10⁻⁹</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h3 class="text-xl font-semibold mb-3 text-neutral-200">Interactive Unit Converter</h3>
+                    <p class="mb-4 text-neutral-300">Practice converting between various physics units. Select your 'From' and 'To' units, enter a value, and see the conversion instantly. This tool covers common units for length, mass, time, speed, force, energy, power, pressure, and temperature.</p>
+                    <div class="bg-neutral-800 p-6 rounded-lg shadow-md">
+                        <div class="grid sm:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label for="fromUnit" class="block text-sm font-medium text-neutral-300">From Unit</label>
+                                <select id="fromUnit" class="mt-1 block w-full pl-3 pr-10 py-2 text-base rounded-md"></select>
+                            </div>
+                            <div>
+                                <label for="toUnit" class="block text-sm font-medium text-neutral-300">To Unit</label>
+                                <select id="toUnit" class="mt-1 block w-full pl-3 pr-10 py-2 text-base rounded-md"></select>
+                            </div>
+                        </div>
+                        <div>
+                            <label for="convertValue" class="block text-sm font-medium text-neutral-300">Value to Convert</label>
+                            <input type="number" id="convertValue" value="1" class="mt-1 block w-full p-2 rounded-md shadow-sm">
+                        </div>
+                        <button id="convertUnitsBtn" class="w-full mt-4 py-2 px-4 rounded-lg font-bold">Convert</button>
+                        <div class="text-center mt-4">
+                            <p class="text-neutral-300">Result:</p>
+                            <p id="conversionResult" class="text-3xl font-bold text-green-400 h-10"></p>
+                        </div>
+                    </div>
+
+                    <h3 class="text-xl font-semibold mt-8 mb-3 text-neutral-200">Practice Questions: Units</h3>
+                    <div id="units-quiz-container"></div>
+                </div>
+            </section>
+            
+            <section id="dimensions" class="content-section">
+                <div class="bg-neutral-900 p-6 sm:p-8 rounded-xl shadow-lg">
+                    <h2 class="text-2xl font-bold mb-4 text-green-400">2. Dimensions: The Nature of Physical Quantities</h2>
+                    <p class="mb-6 text-neutral-300">Dimensions refer to the fundamental physical nature of a quantity (e.g., length, mass, time), independent of the units used. Dimensional analysis is a powerful technique for checking the consistency of equations and even deriving relationships between quantities.</p>
+                    
+                    <h3 class="text-xl font-semibold mb-3 text-neutral-200">Key Concepts: Dimensional Formula & Homogeneity</h3>
+                    <div class="space-y-4 mb-6">
+                        <div class="p-4 bg-neutral-800 rounded-lg shadow-md">
+                            <h4 class="font-bold text-green-300 mb-2">Dimensional Formula</h4>
+                            <p class="text-neutral-300">An expression showing how a derived quantity depends on the fundamental quantities. We use square brackets: [M] for mass, [L] for length, [T] for time.</p>
+                            <p class="text-neutral-400 mt-2">Example: Dimensions of Speed = <span class="latex">[L][T]⁻¹</span></p>
+                        </div>
+                        <div class="p-4 bg-neutral-800 rounded-lg shadow-md">
+                            <h4 class="font-bold text-green-300 mb-2">Principle of Homogeneity of Dimensions</h4>
+                            <p class="text-neutral-300">An equation is dimensionally correct if the dimensions of all terms on both sides of the equation are the same. This is a crucial check for any physics formula.</p>
+                            <p class="text-neutral-400 mt-2">Example: In <span class="latex">s = ut + ½at²</span>, all terms must have dimensions of [L].</p>
+                        </div>
+                    </div>
+
+                    <h3 class="text-xl font-semibold mb-3 text-neutral-200">Step-by-Step Dimensional Analysis Examples</h3>
+                    <div class="space-y-6">
+                        <div class="p-4 bg-neutral-800 rounded-lg shadow-md">
+                            <h4 class="font-bold text-green-300 mb-2">Example 1: Dimensions of Force</h4>
+                            <p class="text-neutral-300"><b>Formula:</b> Force = Mass × Acceleration</p>
+                            <ol class="list-decimal list-inside text-neutral-300 space-y-1 mt-2">
+                                <li><b>Identify Base Dimensions:</b> Mass is <span class="latex">[M]</span>.</li>
+                                <li><b>Break Down Derived Quantities:</b>
+                                    <ul>
+                                        <li class="ml-4">Velocity = Distance / Time <span class="latex">= [L]/[T] = [L][T]⁻¹</span></li>
+                                        <li class="ml-4">Acceleration = Velocity / Time <span class="latex">= [L][T]⁻¹ / [T] = [L][T]⁻²</span></li>
+                                    </ul>
+                                </li>
+                                <li><b>Substitute into Formula:</b> Dimensions of Force = <span class="latex">[M] × [L][T]⁻²</span></li>
+                                <li><b>Simplify:</b> Dimensions of Force = <span class="latex">[M][L][T]⁻²</span></li>
+                            </ol>
+                        </div>
+                        <div class="p-4 bg-neutral-800 rounded-lg shadow-md">
+                            <h4 class="font-bold text-green-300 mb-2">Example 2: Dimensions of Work/Energy</h4>
+                            <p class="text-neutral-300"><b>Formula:</b> Work = Force × Displacement</p>
+                            <ol class="list-decimal list-inside text-neutral-300 space-y-1 mt-2">
+                                <li><b>Identify Base Dimensions:</b> Displacement is <span class="latex">[L]</span>.</li>
+                                <li><b>Use Known Derived Dimensions:</b> Force = <span class="latex">[M][L][T]⁻²</span> (from Example 1).</li>
+                                <li><b>Substitute into Formula:</b> Dimensions of Work = <span class="latex">[M][L][T]⁻² × [L]</span></li>
+                                <li><b>Simplify:</b> Dimensions of Work = <span class="latex">[M][L]²[T]⁻²</span></li>
+                            </ol>
+                            <p class="text-neutral-400 mt-2">Note: Energy has the same dimensions as Work, consistent with <span class="latex">E = ½mv²</span> where <span class="latex">m</span> is <span class="latex">[M]</span> and <span class="latex">v²</span> is <span class="latex">([L][T]⁻¹)² = [L]²[T]⁻²</span>. So, <span class="latex">[M][L]²[T]⁻²</span>.</p>
+                        </div>
+                    </div>
+
+                    <h3 class="text-xl font-semibold mt-8 mb-3 text-neutral-200">Practice Questions: Dimensions</h3>
+                    <div id="dimensions-quiz-container"></div>
+                </div>
+            </section>
+
+            <section id="vectors" class="content-section">
+                <div class="bg-neutral-900 p-6 sm:p-8 rounded-xl shadow-lg">
+                    <h2 class="text-2xl font-bold mb-4 text-green-400">3. Vectors Lab: Direction Matters!</h2>
+                     <p class="mb-6 text-neutral-300">Quantities in physics can be scalars (magnitude only) or vectors (magnitude and direction). This interactive lab helps you visualize vector addition and understand how to work with vector components using trigonometry. Experiment with different input methods and see the resultant vector dynamically.</p>
+                    
+                    <h3 class="text-xl font-semibold mb-3 text-neutral-200">Vector Input & Visualization</h3>
+                    <div class="grid lg:grid-cols-2 gap-8">
+                        <div>
+                            <div class="bg-neutral-800 p-6 rounded-lg shadow-md mb-4">
+                                <h4 class="font-bold text-green-300 mb-3">Input Method</h4>
+                                <div class="flex gap-4">
+                                    <label class="inline-flex items-center">
+                                        <input type="radio" name="vectorInputType" value="mag_angle" checked class="form-radio text-green-500">
+                                        <span class="ml-2 text-neutral-300">Magnitude & Angle</span>
+                                    </label>
+                                    <label class="inline-flex items-center">
+                                        <input type="radio" name="vectorInputType" value="components" class="form-radio text-green-500">
+                                        <span class="ml-2 text-neutral-300">X & Y Components</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div id="magAngleInputs" class="grid sm:grid-cols-2 gap-4 bg-neutral-800 p-6 rounded-lg shadow-md">
+                                <div class="space-y-4">
+                                    <h4 class="font-bold text-center text-green-300">Vector A</h4>
+                                    <div>
+                                        <label for="vecAMag" class="block text-sm font-medium text-neutral-300">Magnitude</label>
+                                        <input type="number" id="vecAMag" value="10" class="mt-1 block w-full p-2 rounded-md">
+                                    </div>
+                                    <div>
+                                        <label for="vecAAngle" class="block text-sm font-medium text-neutral-300">Angle (° from +X)</label>
+                                        <input type="number" id="vecAAngle" value="30" class="mt-1 block w-full p-2 rounded-md">
+                                    </div>
+                                </div>
+                                <div class="space-y-4">
+                                    <h4 class="font-bold text-center text-green-300">Vector B</h4>
+                                    <div>
+                                        <label for="vecBMag" class="block text-sm font-medium text-neutral-300">Magnitude</label>
+                                        <input type="number" id="vecBMag" value="8" class="mt-1 block w-full p-2 rounded-md">
+                                    </div>
+                                    <div>
+                                        <label for="vecBAngle" class="block text-sm font-medium text-neutral-300">Angle (° from +X)</label>
+                                        <input type="number" id="vecBAngle" value="150" class="mt-1 block w-full p-2 rounded-md">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="componentInputs" class="grid sm:grid-cols-2 gap-4 bg-neutral-800 p-6 rounded-lg shadow-md hidden">
+                                <div class="space-y-4">
+                                    <h4 class="font-bold text-center text-green-300">Vector A</h4>
+                                    <div>
+                                        <label for="vecAX" class="block text-sm font-medium text-neutral-300">X Component</label>
+                                        <input type="number" id="vecAX" value="8.66" class="mt-1 block w-full p-2 rounded-md">
+                                    </div>
+                                    <div>
+                                        <label for="vecAY" class="block text-sm font-medium text-neutral-300">Y Component</label>
+                                        <input type="number" id="vecAY" value="5" class="mt-1 block w-full p-2 rounded-md">
+                                    </div>
+                                </div>
+                                <div class="space-y-4">
+                                    <h4 class="font-bold text-center text-green-300">Vector B</h4>
+                                    <div>
+                                        <label for="vecBX" class="block text-sm font-medium text-neutral-300">X Component</label>
+                                        <input type="number" id="vecBX" value="-6.93" class="mt-1 block w-full p-2 rounded-md">
+                                    </div>
+                                    <div>
+                                        <label for="vecBY" class="block text-sm font-medium text-neutral-300">Y Component</label>
+                                        <input type="number" id="vecBY" value="4" class="mt-1 block w-full p-2 rounded-md">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button id="visualizeVectorBtn" class="w-full mt-4 py-2 px-4 rounded-lg font-bold">Visualize Resultant Vector</button>
+                             <div id="vectorResults" class="mt-4 p-4 bg-neutral-800 rounded-lg shadow-md"></div>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-semibold mb-3 text-neutral-200">Graphical Representation</h3>
+                            <div class="chart-container">
+                                <canvas id="vectorCanvas"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3 class="text-xl font-semibold mt-8 mb-3 text-neutral-200">SOH CAH TOA: Finding Vector Components</h3>
+                    <p class="mb-4 text-neutral-300">SOH CAH TOA is a mnemonic for the definitions of the three basic trigonometric functions: Sine, Cosine, and Tangent. These are essential for breaking down vectors into their X and Y components, or finding a vector's angle and magnitude from its components.</p>
+                    <div class="bg-neutral-800 p-6 rounded-lg shadow-md grid md:grid-cols-2 gap-6">
+                        <div>
+                            <h4 class="font-bold text-green-300 mb-2">The Rules</h4>
+                            <ul class="list-disc list-inside text-neutral-300 space-y-1">
+                                <li>**SOH**: <span class="latex">Sine(\theta) = Opposite / Hypotenuse</span></li>
+                                <li>**CAH**: <span class="latex">Cosine(\theta) = Adjacent / Hypotenuse</span></li>
+                                <li>**TOA**: <span class="latex">Tangent(\theta) = Opposite / Adjacent</span></li>
+                            </ul>
+                            <p class="text-neutral-400 mt-3">For a vector <span class="latex">\vec{A}</span> with magnitude <span class="latex">A</span> and angle <span class="latex">\theta</span> from the positive x-axis:</p>
+                            <ul class="list-disc list-inside text-neutral-300 space-y-1 ml-4">
+                                <li><span class="latex">A_x = A \cos \theta</span> (Adjacent)</li>
+                                <li><span class="latex">A_y = A \sin \theta</span> (Opposite)</li>
+                                <li><span class="latex">A = \sqrt{A_x^2 + A_y^2}</span> (Hypotenuse)</li>
+                                <li><span class="latex">\theta = \arctan(A_y / A_x)</span></li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-green-300 mb-2">Interactive SOH CAH TOA Calculator</h4>
+                            <p class="text-sm text-neutral-400 mb-3">Enter two values to find the third for a right-angled triangle (representing a vector).</p>
+                            <div class="space-y-3">
+                                <div>
+                                    <label for="soh_hypotenuse" class="block text-sm font-medium text-neutral-300">Hypotenuse (Magnitude)</label>
+                                    <input type="number" id="soh_hypotenuse" class="mt-1 block w-full p-2 rounded-md">
+                                </div>
+                                <div>
+                                    <label for="soh_opposite" class="block text-sm font-medium text-neutral-300">Opposite (Y-Component)</label>
+                                    <input type="number" id="soh_opposite" class="mt-1 block w-full p-2 rounded-md">
+                                </div>
+                                <div>
+                                    <label for="soh_adjacent" class="block text-sm font-medium text-neutral-300">Adjacent (X-Component)</label>
+                                    <input type="number" id="soh_adjacent" class="mt-1 block w-full p-2 rounded-md">
+                                </div>
+                                <button id="calculateSohCahToa" class="w-full py-2 px-4 rounded-lg font-bold">Calculate</button>
+                                <div id="sohCahToaResult" class="mt-3 p-3 bg-neutral-700 rounded-md text-neutral-200"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3 class="text-xl font-semibold mt-8 mb-3 text-neutral-200">Practice Questions: Vectors</h3>
+                    <div id="vectors-quiz-container"></div>
+                </div>
+            </section>
+
+            <section id="formulas" class="content-section">
+                <div class="bg-neutral-900 p-6 sm:p-8 rounded-xl shadow-lg">
+                    <h2 class="text-2xl font-bold mb-4 text-green-400">4. Essential Physics Formulas for Dimensional Analysis</h2>
+                    <p class="mb-6 text-neutral-300">This section provides a quick reference for common physics formulas. Understanding these formulas and the quantities they relate is crucial for performing dimensional analysis and checking the consistency of equations. Pay attention to the variables and their corresponding physical quantities.</p>
+
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div class="p-4 bg-neutral-800 rounded-lg shadow-md">
+                            <h3 class="font-bold text-green-300 mb-2">Kinematics & Dynamics</h3>
+                            <ul class="list-disc list-inside text-neutral-300 space-y-2">
+                                <li>**Displacement:** <span class="latex">s = ut + ½at²</span>
+                                    <br><span class="text-sm text-neutral-400">($s$: displacement, $u$: initial velocity, $t$: time, $a$: acceleration)</span></li>
+                                <li>**Velocity:** <span class="latex">v = u + at</span>
+                                    <br><span class="text-sm text-neutral-400">($v$: final velocity)</span></li>
+                                <li>**Force (Newton's 2nd Law):** <span class="latex">F = ma</span>
+                                    <br><span class="text-sm text-neutral-400">($F$: force, $m$: mass, $a$: acceleration)</span></li>
+                                <li>**Kinetic Energy:** <span class="latex">KE = ½mv²</span>
+                                    <br><span class="text-sm text-neutral-400">($KE$: kinetic energy, $m$: mass, $v$: velocity)</span></li>
+                                <li>**Work Done:** <span class="latex">W = Fd \cos \theta</span>
+                                    <br><span class="text-sm text-neutral-400">($W$: work, $F$: force, $d$: displacement, $\theta$: angle)</span></li>
+                                <li>**Power:** <span class="latex">P = W/t</span> or <span class="latex">P = Fv</span>
+                                    <br><span class="text-sm text-neutral-400">($P$: power, $W$: work, $t$: time, $F$: force, $v$: velocity)</span></li>
+                            </ul>
+                        </div>
+                        <div class="p-4 bg-neutral-800 rounded-lg shadow-md">
+                            <h3 class="font-bold text-green-300 mb-2">Other Key Formulas</h3>
+                            <ul class="list-disc list-inside text-neutral-300 space-y-2">
+                                <li>**Density:** <span class="latex">\rho = m/V</span>
+                                    <br><span class="text-sm text-neutral-400">($\rho$: density, $m$: mass, $V$: volume)</span></li>
+                                <li>**Pressure:** <span class="latex">P = F/A</span>
+                                    <br><span class="text-sm text-neutral-400">($P$: pressure, $F$: force, $A$: area)</span></li>
+                                <li>**Momentum:** <span class="latex">p = mv</span>
+                                    <br><span class="text-sm text-neutral-400">($p$: momentum, $m$: mass, $v$: velocity)</span></li>
+                                <li>**Impulse:** <span class="latex">J = F\Delta t</span>
+                                    <br><span class="text-sm text-neutral-400">($J$: impulse, $F$: force, $\Delta t$: change in time)</span></li>
+                                <li>**Frequency:** <span class="latex">f = 1/T</span>
+                                    <br><span class="text-sm text-neutral-400">($f$: frequency, $T$: period)</span></li>
+                                <li>**Angular Velocity:** <span class="latex">\omega = \Delta \theta / \Delta t</span>
+                                    <br><span class="text-sm text-neutral-400">($\omega$: angular velocity, $\Delta \theta$: angular displacement, $\Delta t$: time)</span></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    const navButtons = document.querySelectorAll('.nav-btn');
+    const contentSections = document.querySelectorAll('.content-section');
+
+    navButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const targetId = button.dataset.target;
+
+            navButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+
+            contentSections.forEach(section => {
+                if (section.id === targetId) {
+                    section.classList.add('active');
+                } else {
+                    section.classList.remove('active');
+                }
+            });
+        });
+    });
+    
+    const unitConversionRates = {
+        'm': { base: 'm', factor: 1 }, 'km': { base: 'm', factor: 1000 }, 'cm': { base: 'm', factor: 0.01 }, 'mm': { base: 'm', factor: 0.001 },
+        'inch': { base: 'm', factor: 0.0254 }, 'ft': { base: 'm', factor: 0.3048 }, 'mile': { base: 'm', factor: 1609.34 },
+
+        'kg': { base: 'kg', factor: 1 }, 'g': { base: 'kg', factor: 0.001 }, 'mg': { base: 'kg', factor: 0.000001 }, 'lb': { base: 'kg', factor: 0.453592 },
+
+        's': { base: 's', factor: 1 }, 'min': { base: 's', factor: 60 }, 'hr': { base: 's', factor: 3600 },
+
+        'm/s': { base: 'm/s', factor: 1 }, 'km/h': { base: 'm/s', factor: 1000/3600 }, 'mph': { base: 'm/s', factor: 1609.34/3600 },
+
+        'N': { base: 'N', factor: 1 }, 'dyne': { base: 'N', factor: 0.00001 },
+
+        'J': { base: 'J', factor: 1 }, 'kJ': { base: 'J', factor: 1000 }, 'cal': { base: 'J', factor: 4.184 }, 'kcal': { base: 'J', factor: 4184 }, 'eV': { base: 'J', factor: 1.60218e-19 },
+
+        'W': { base: 'W', factor: 1 }, 'kW': { base: 'W', factor: 1000 }, 'hp': { base: 'W', factor: 745.7 },
+
+        'Pa': { base: 'Pa', factor: 1 }, 'kPa': { base: 'Pa', factor: 1000 }, 'atm': { base: 'Pa', factor: 101325 }, 'psi': { base: 'Pa', factor: 6894.76 },
+
+        'K': { base: 'K', factor: 1, offset: 0 },
+        '°C': { base: 'K', factor: 1, offset: 273.15 },
+        '°F': { base: 'K', factor: 5/9, offset: 459.67 * 5/9 },
+    };
+
+    const unitCategories = {
+        'Length': ['m', 'km', 'cm', 'mm', 'inch', 'ft', 'mile'],
+        'Mass': ['kg', 'g', 'mg', 'lb'],
+        'Time': ['s', 'min', 'hr'],
+        'Speed': ['m/s', 'km/h', 'mph'],
+        'Force': ['N', 'dyne'],
+        'Energy': ['J', 'kJ', 'cal', 'kcal', 'eV'],
+        'Power': ['W', 'kW', 'hp'],
+        'Pressure': ['Pa', 'kPa', 'atm', 'psi'],
+        'Temperature': ['K', '°C', '°F']
+    };
+
+    const fromUnitSelect = document.getElementById('fromUnit');
+    const toUnitSelect = document.getElementById('toUnit');
+    const convertValueInput = document.getElementById('convertValue');
+    const convertUnitsBtn = document.getElementById('convertUnitsBtn');
+    const conversionResultEl = document.getElementById('conversionResult');
+
+    function populateUnitDropdowns() {
+        fromUnitSelect.innerHTML = '';
+        toUnitSelect.innerHTML = '';
+        for (const category in unitCategories) {
+            const optgroupFrom = document.createElement('optgroup');
+            optgroupFrom.label = category;
+            const optgroupTo = document.createElement('optgroup');
+            optgroupTo.label = category;
+
+            unitCategories[category].forEach(unit => {
+                const optionFrom = document.createElement('option');
+                optionFrom.value = unit;
+                optionFrom.textContent = unit;
+                optgroupFrom.appendChild(optionFrom);
+
+                const optionTo = document.createElement('option');
+                optionTo.value = unit;
+                optionTo.textContent = unit;
+                optgroupTo.appendChild(optionTo);
+            });
+            fromUnitSelect.appendChild(optgroupFrom);
+            toUnitSelect.appendChild(optgroupTo);
+        }
+        fromUnitSelect.value = 'km';
+        toUnitSelect.value = 'm';
+    }
+
+    function convertUnits() {
+        const fromUnit = fromUnitSelect.value;
+        const toUnit = toUnitSelect.value;
+        let value = parseFloat(convertValueInput.value);
+
+        if (isNaN(value)) {
+            conversionResultEl.textContent = 'Invalid Input';
+            return;
+        }
+
+        const fromInfo = unitConversionRates[fromUnit];
+        const toInfo = unitConversionRates[toUnit];
+
+        if (!fromInfo || !toInfo) {
+            conversionResultEl.textContent = 'Units Not Found';
+            return;
+        }
+
+        let fromCategory = '';
+        let toCategory = '';
+        for (const category in unitCategories) {
+            if (unitCategories[category].includes(fromUnit)) fromCategory = category;
+            if (unitCategories[category].includes(toUnit)) toCategory = category;
+        }
+
+        if (fromCategory !== toCategory) {
+            conversionResultEl.textContent = 'Incompatible Units';
+            return;
+        }
+
+        let result;
+        if (fromCategory === 'Temperature') {
+            let kelvinValue;
+            if (fromUnit === '°C') kelvinValue = value + 273.15;
+            else if (fromUnit === '°F') kelvinValue = (value - 32) * (5/9) + 273.15;
+            else kelvinValue = value;
+
+            if (toUnit === '°C') result = kelvinValue - 273.15;
+            else if (toUnit === '°F') result = (kelvinValue - 273.15) * (9/5) + 32;
+            else result = kelvinValue;
+        } else {
+            let baseValue = value * fromInfo.factor;
+            result = baseValue / toInfo.factor;
+        }
+        
+        conversionResultEl.textContent = `${result.toFixed(4)} ${toUnit}`;
+    }
+
+    populateUnitDropdowns();
+    convertUnitsBtn.addEventListener('click', convertUnits);
+    convertUnitsBtn.click();
+
+    let vectorChart;
+    const visualizeVectorBtn = document.getElementById('visualizeVectorBtn');
+    const vectorResultsEl = document.getElementById('vectorResults');
+    const vectorCanvasCtx = document.getElementById('vectorCanvas').getContext('2d');
+
+    const magAngleInputs = document.getElementById('magAngleInputs');
+    const componentInputs = document.getElementById('componentInputs');
+    const vectorInputTypeRadios = document.querySelectorAll('input[name="vectorInputType"]');
+
+    vectorInputTypeRadios.forEach(radio => {
+        radio.addEventListener('change', () => {
+            if (radio.value === 'mag_angle') {
+                magAngleInputs.classList.remove('hidden');
+                componentInputs.classList.add('hidden');
+            } else {
+                magAngleInputs.classList.add('hidden');
+                componentInputs.classList.remove('hidden');
+            }
+            visualizeVectors();
+        });
+    });
+
+    function createVectorChart() {
+        if(vectorChart) {
+            vectorChart.destroy();
+        }
+        vectorChart = new Chart(vectorCanvasCtx, {
+            type: 'scatter',
+            data: {
+                datasets: []
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        type: 'linear',
+                        position: 'bottom',
+                        grid: { color: '#333' },
+                        ticks: { color: '#bbb' },
+                        title: { display: true, text: 'X Component', color: '#e0e0e0' }
+                    },
+                    y: {
+                        grid: { color: '#333' },
+                        ticks: { color: '#bbb' },
+                        title: { display: true, text: 'Y Component', color: '#e0e0e0' }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: { color: '#e0e0e0' }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.x !== null) {
+                                    label += `(${context.parsed.x.toFixed(2)}, ${context.parsed.y.toFixed(2)})`;
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                },
+                elements: {
+                    point: {
+                        pointStyle: 'triangle',
+                        radius: 6,
+                        rotation: (ctx) => {
+                           const data = ctx.chart.data.datasets[ctx.datasetIndex].data;
+                           if(data.length < 2) return 0;
+                           const p1 = data[0];
+                           const p2 = data[1];
+                           return Math.atan2(p2.y - p1.y, p2.x - p1.x) * (180 / Math.PI) + 90;
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function visualizeVectors() {
+        let Ax, Ay, Bx, By;
+
+        const inputType = document.querySelector('input[name="vectorInputType"]:checked').value;
+
+        if (inputType === 'mag_angle') {
+            const magA = parseFloat(document.getElementById('vecAMag').value);
+            const angA = parseFloat(document.getElementById('vecAAngle').value) * (Math.PI / 180);
+            const magB = parseFloat(document.getElementById('vecBMag').value);
+            const angB = parseFloat(document.getElementById('vecBAngle').value) * (Math.PI / 180);
+            Ax = magA * Math.cos(angA);
+            Ay = magA * Math.sin(angA);
+            Bx = magB * Math.cos(angB);
+            By = magB * Math.sin(angB);
+        } else {
+            Ax = parseFloat(document.getElementById('vecAX').value);
+            Ay = parseFloat(document.getElementById('vecAY').value);
+            Bx = parseFloat(document.getElementById('vecBX').value);
+            By = parseFloat(document.getElementById('vecBY').value);
+        }
+
+        if (isNaN(Ax) || isNaN(Ay) || isNaN(Bx) || isNaN(By)) {
+            vectorResultsEl.innerHTML = '<p class="text-red-400">Please enter valid numbers for all vector inputs.</p>';
+            vectorChart.data.datasets = [];
+            vectorChart.update();
+            return;
+        }
+
+        const Rx = Ax + Bx;
+        const Ry = Ay + By;
+
+        const magR = Math.sqrt(Rx**2 + Ry**2);
+        let angR = Math.atan2(Ry, Rx) * (180 / Math.PI);
+        if (angR < 0) angR += 360;
+
+        vectorChart.data.datasets = [
+            {
+                label: 'Vector A',
+                data: [{x: 0, y: 0}, {x: Ax, y: Ay}],
+                borderColor: '#ef4444',
+                backgroundColor: 'rgba(239, 68, 68, 0.5)',
+                showLine: true,
+                fill: false,
+                borderWidth: 2,
+                pointStyle: 'arrow',
+                pointRadius: 8,
+                pointRotation: (ctx) => {
+                    const dx = ctx.chart.data.datasets[ctx.datasetIndex].data[1].x - ctx.chart.data.datasets[ctx.datasetIndex].data[0].x;
+                    const dy = ctx.chart.data.datasets[ctx.datasetIndex].data[1].y - ctx.chart.data.datasets[ctx.datasetIndex].data[0].y;
+                    return Math.atan2(dy, dx) * (180 / Math.PI) + 90;
+                }
+            },
+            {
+                label: 'Vector B',
+                data: [{x: 0, y: 0}, {x: Bx, y: By}],
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                showLine: true,
+                fill: false,
+                borderWidth: 2,
+                pointStyle: 'arrow',
+                pointRadius: 8,
+                pointRotation: (ctx) => {
+                    const dx = ctx.chart.data.datasets[ctx.datasetIndex].data[1].x - ctx.chart.data.datasets[ctx.datasetIndex].data[0].x;
+                    const dy = ctx.chart.data.datasets[ctx.datasetIndex].data[1].y - ctx.chart.data.datasets[ctx.datasetIndex].data[0].y;
+                    return Math.atan2(dy, dx) * (180 / Math.PI) + 90;
+                }
+            },
+            {
+                label: 'Resultant R',
+                data: [{x: 0, y: 0}, {x: Rx, y: Ry}],
+                borderColor: '#10b981',
+                backgroundColor: 'rgba(16, 185, 129, 0.5)',
+                showLine: true,
+                fill: false,
+                borderWidth: 3,
+                borderDash: [5, 5],
+                pointStyle: 'arrow',
+                pointRadius: 10,
+                pointRotation: (ctx) => {
+                    const dx = ctx.chart.data.datasets[ctx.datasetIndex].data[1].x - ctx.chart.data.datasets[ctx.datasetIndex].data[0].x;
+                    const dy = ctx.chart.data.datasets[ctx.datasetIndex].data[1].y - ctx.chart.data.datasets[ctx.datasetIndex].data[0].y;
+                    return Math.atan2(dy, dx) * (180 / Math.PI) + 90;
+                }
+            }
+        ];
+        vectorChart.update();
+
+        vectorResultsEl.innerHTML = `
+            <h4 class="font-bold mb-2 text-green-300">Calculation Results</h4>
+            <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left bg-neutral-700 rounded-md">
+                <thead class="bg-neutral-600"><tr><th class="p-2">Vector</th><th class="p-2">X-Comp</th><th class="p-2">Y-Comp</th></tr></thead>
+                <tbody>
+                    <tr class="border-b border-neutral-700">
+                        <td class="p-2 font-semibold">A</td><td class="p-2">${Ax.toFixed(2)}</td><td class="p-2">${Ay.toFixed(2)}</td>
+                    </tr>
+                     <tr class="border-b border-neutral-700">
+                        <td class="p-2 font-semibold">B</td><td class="p-2">${Bx.toFixed(2)}</td><td class="p-2">${By.toFixed(2)}</td>
+                    </tr>
+                    <tr class="font-bold bg-green-900 text-green-200">
+                        <td class="p-2">Resultant R</td><td class="p-2">${Rx.toFixed(2)}</td><td class="p-2">${Ry.toFixed(2)}</td>
+                    </tr>
+                </tbody>
+            </table>
+            </div>
+            <p class="mt-4 text-neutral-200"><b>Resultant Magnitude:</b> ${magR.toFixed(2)} units</p>
+            <p class="text-neutral-200"><b>Resultant Direction:</b> ${angR.toFixed(2)}°</p>
+        `;
+    }
+
+    visualizeVectorBtn.addEventListener('click', visualizeVectors);
+    createVectorChart();
+    visualizeVectors();
+
+    const sohHypotenuse = document.getElementById('soh_hypotenuse');
+    const sohOpposite = document.getElementById('soh_opposite');
+    const sohAdjacent = document.getElementById('soh_adjacent');
+    const calculateSohCahToaBtn = document.getElementById('calculateSohCahToa');
+    const sohCahToaResultEl = document.getElementById('sohCahToaResult');
+
+    calculateSohCahToaBtn.addEventListener('click', () => {
+        const H = parseFloat(sohHypotenuse.value);
+        const O = parseFloat(sohOpposite.value);
+        const A = parseFloat(sohAdjacent.value);
+
+        let resultHTML = '<p class="text-red-400">Please enter exactly two values.</p>';
+        let count = 0;
+        if (!isNaN(H)) count++;
+        if (!isNaN(O)) count++;
+        if (!isNaN(A)) count++;
+
+        if (count !== 2) {
+            sohCahToaResultEl.innerHTML = resultHTML;
+            return;
+        }
+
+        if (!isNaN(H) && !isNaN(O)) {
+            if (H < O) { sohCahToaResultEl.innerHTML = '<p class="text-red-400">Hypotenuse cannot be less than Opposite.</p>'; return; }
+            const calculatedA = Math.sqrt(H * H - O * O);
+            const angleRad = Math.asin(O / H);
+            const angleDeg = angleRad * (180 / Math.PI);
+            resultHTML = `<p>Adjacent (X-Comp): ${calculatedA.toFixed(2)}</p><p>Angle: ${angleDeg.toFixed(2)}°</p>`;
+        } else if (!isNaN(H) && !isNaN(A)) {
+            if (H < A) { sohCahToaResultEl.innerHTML = '<p class="text-red-400">Hypotenuse cannot be less than Adjacent.</p>'; return; }
+            const calculatedO = Math.sqrt(H * H - A * A);
+            const angleRad = Math.acos(A / H);
+            const angleDeg = angleRad * (180 / Math.PI);
+            resultHTML = `<p>Opposite (Y-Comp): ${calculatedO.toFixed(2)}</p><p>Angle: ${angleDeg.toFixed(2)}°</p>`;
+        } else if (!isNaN(O) && !isNaN(A)) {
+            const calculatedH = Math.sqrt(O * O + A * A);
+            const angleRad = Math.atan2(O, A);
+            const angleDeg = angleRad * (180 / Math.PI);
+            resultHTML = `<p>Hypotenuse (Magnitude): ${calculatedH.toFixed(2)}</p><p>Angle: ${angleDeg.toFixed(2)}°</p>`;
+        } else {
+            sohCahToaResultEl.innerHTML = resultHTML;
+            return;
+        }
+        sohCahToaResultEl.innerHTML = resultHTML;
+    });
+
+    const quizzes = {
+        units: [
+            {
+                question: "A car travels at 90 km/h. What is its speed in meters per second?",
+                solution: "To convert km/h to m/s, multiply by (1000 m / 1 km) and (1 h / 3600 s). So, 90 * (1000/3600) = 90 * (5/18) = 5 * 5 = 25 m/s."
+            },
+            {
+                question: "If a person weighs 150 pounds, what is their mass in kilograms? (1 lb = 0.453592 kg)",
+                solution: "Mass in kg = 150 lb * 0.453592 kg/lb = 68.0388 kg."
+            },
+            {
+                question: "How many milliseconds are in 5 seconds?",
+                solution: "Milli (m) means 10⁻³. So, 1 second = 1000 milliseconds. Therefore, 5 seconds = 5 * 1000 = 5000 milliseconds."
+            },
+            {
+                question: "What is the SI unit for electric current?",
+                solution: "The SI unit for electric current is the Ampere (A)."
+            },
+            {
+                question: "Convert 2500 Joules to kilojoules.",
+                solution: "Kilo (k) means 10³. So, 1 kilojoule = 1000 Joules. Therefore, 2500 J / 1000 = 2.5 kJ."
+            }
+        ],
+        dimensions: [
+            {
+                question: "What is the dimensional formula for Momentum?",
+                solution: "Momentum = Mass × Velocity. Dimensions of Mass = [M]. Dimensions of Velocity = [L][T]⁻¹. So, Momentum = [M][L][T]⁻¹."
+            },
+            {
+                question: "Check the dimensional consistency of the equation for gravitational potential energy: PE = mgh, where PE is potential energy, m is mass, g is acceleration due to gravity, and h is height.",
+                solution: "Dimensions of PE (Energy) = [M][L]²[T]⁻². Dimensions of mgh = [M] × [L][T]⁻² (for g) × [L] (for h) = [M][L]²[T]⁻². Yes, the equation is dimensionally consistent."
+            },
+            {
+                question: "If Volume = Length × Width × Height, what are the dimensions of Volume?",
+                solution: "Dimensions of Length = [L], Width = [L], Height = [L]. So, Volume = [L] × [L] × [L] = [L]³."
+            },
+            {
+                question: "Determine the dimensions of Impulse. (Impulse = Force × time)",
+                solution: "Dimensions of Force = [M][L][T]⁻². Dimensions of time = [T]. So, Impulse = [M][L][T]⁻² × [T] = [M][L][T]⁻¹."
+            },
+            {
+                question: "Is the equation v² = u² + 2as dimensionally consistent? (v: final velocity, u: initial velocity, a: acceleration, s: displacement)",
+                solution: "Dimensions of v² = ([L][T]⁻¹)² = [L]²[T]⁻². Dimensions of u² = ([L][T]⁻¹)² = [L]²[T]⁻². Dimensions of 2as = [L][T]⁻² × [L] = [L]²[T]⁻². Yes, the equation is dimensionally consistent."
+            }
+        ],
+        vectors: [
+            {
+                question: "Vector P has components (-5, 12). What is its magnitude and direction (angle from positive X-axis)?",
+                solution: "Magnitude = √((-5)² + 12²) = √(25 + 144) = √169 = 13 units. Angle = atan2(12, -5) = 112.62° (in the 2nd quadrant)."
+            },
+            {
+                question: "A displacement vector is 20 meters at 270°. What are its X and Y components?",
+                solution: "X-component = 20 * cos(270°) = 20 * 0 = 0 meters. Y-component = 20 * sin(270°) = 20 * (-1) = -20 meters."
+            },
+            {
+                question: "If Vector A = (2i + 3j) and Vector B = (4i - j), find the resultant vector A + B.",
+                solution: "Resultant X-component = 2 + 4 = 6. Resultant Y-component = 3 - 1 = 2. So, A + B = (6i + 2j)."
+            },
+            {
+                question: "A force of 50 N acts at an angle of 60° above the horizontal. Find its horizontal (X) and vertical (Y) components.",
+                solution: "Horizontal (X) component = 50 * cos(60°) = 50 * 0.5 = 25 N. Vertical (Y) component = 50 * sin(60°) = 50 * 0.866 = 43.30 N."
+            },
+            {
+                question: "If the X-component of a vector is -10 and the Y-component is -10, what is its magnitude and angle?",
+                solution: "Magnitude = √((-10)² + (-10)²) = √(100 + 100) = √200 ≈ 14.14 units. Angle = atan2(-10, -10) = -135° or 225° (in the 3rd quadrant)."
+            }
+        ]
+    };
+
+    function renderQuiz(quizData, containerId) {
+        const container = document.getElementById(containerId);
+        container.innerHTML = '';
+        quizData.forEach((q, index) => {
+            const card = document.createElement('div');
+            card.classList.add('quiz-question-card');
+            card.innerHTML = `
+                <p class="font-semibold text-neutral-200 mb-3">${index + 1}. ${q.question}</p>
+                <button class="show-solution-btn bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg text-sm">View Solution</button>
+                <div class="quiz-solution text-neutral-300">
+                    <p>${q.solution}</p>
+                </div>
+            `;
+            const showSolutionBtn = card.querySelector('.show-solution-btn');
+            const solutionDiv = card.querySelector('.quiz-solution');
+            showSolutionBtn.addEventListener('click', () => {
+                solutionDiv.classList.toggle('active');
+                if (solutionDiv.classList.contains('active')) {
+                    showSolutionBtn.textContent = 'Hide Solution';
+                } else {
+                    showSolutionBtn.textContent = 'View Solution';
+                }
+            });
+            container.appendChild(card);
+        });
+    }
+
+    renderQuiz(quizzes.units, 'units-quiz-container');
+    renderQuiz(quizzes.dimensions, 'dimensions-quiz-container');
+    renderQuiz(quizzes.vectors, 'vectors-quiz-container');
+});
+</script>
+
+</body>
+</html>
